@@ -19,6 +19,15 @@ public class SqlSessionFactoryBuilder {
     public SqlSessionFactoryBuilder() {
     }
 
+    private static final Map<String, DataSourceFactory> DATASOURCE_FACTORIES = new HashMap<>();
+    private static final Map<String, TransactionFactory> TRANSACTION_FACTORIES = new HashMap<>();
+
+    static {
+        DATASOURCE_FACTORIES.put(Const.UN_POLLED_DATA_SOURCE, new UnPooledDataSourceFactory());
+        DATASOURCE_FACTORIES.put(Const.POOLED_DATA_SOURCE, new PooledDataSourceFactory());
+        TRANSACTION_FACTORIES.put(Const.JDBC_TRANSACTION, new JdbcTransactionFactory());
+    }
+
     public SqlSessionFactory build(InputStream inputStream) {
         SAXReader saxReader = new SAXReader();
         try {
@@ -78,46 +87,26 @@ public class SqlSessionFactoryBuilder {
 
     private DataSource getDataSource(Element dataSourceElement) {
         String type = dataSourceElement.attributeValue("type").trim().toUpperCase();
-        DataSource dataSource = null;
-        List<Element> elements = dataSourceElement.elements();
-        Map<String, String> map = new HashMap<>();
-        for (Element element : elements) {
-            String name = element.attributeValue("name");
-            String value = element.attributeValue("value");
-            map.put(name, value);
+        Map<String, String> properties = new HashMap<>();
+        for (Element element : dataSourceElement.elements()) {
+            properties.put(element.attributeValue("name"), element.attributeValue("value"));
         }
-        if (Const.UN_POLLED_DATA_SOURCE.equals(type)) {
-            dataSource = new UnPooledDataSource(
-                    map.get("driver"),
-                    map.get("url"),
-                    map.get("username"),
-                    map.get("password")
-            );
+        DataSourceFactory factory = DATASOURCE_FACTORIES.get(type);
+        if (factory == null) {
+            throw new RuntimeException("不支持的数据源类型: " + type);
         }
-        if (Const.POOLED_DATA_SOURCE.equals(type)) {
-            dataSource = new PooledDataSource();
-        }
-        if (Const.JNDI_DATA_SOURCE.equals(type)) {
-            dataSource = new JNDIDataSource();
-        }
-        return dataSource;
+        return factory.getDataSource(properties);
     }
 
 
     private Transaction getTransaction(Element transactionElement, DataSource dataSource) {
-        String transactionManager = transactionElement.attributeValue("transactionManager").trim().toUpperCase();
-        Transaction transaction = null;
-        if (Const.JDBC_TRANSACTION.equals(transactionManager)) {
-            transaction = new JdbcTransaction(dataSource, false);
+        String type = transactionElement.attributeValue("type").trim().toUpperCase();
+        TransactionFactory factory = TRANSACTION_FACTORIES.get(type);
+        if (factory == null) {
+            throw new RuntimeException("不支持的事务管理器类型: " + type);
         }
-        if (Const.MANAGER_TRANSACTION.equals(transactionManager)) {
-            transaction = new ManagerTransaction();
-        }
-        return transaction;
-
+        return factory.getTransaction(dataSource);
     }
-
-
 }
 
 
