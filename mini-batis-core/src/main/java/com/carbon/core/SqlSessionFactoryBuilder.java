@@ -25,6 +25,7 @@ public class SqlSessionFactoryBuilder {
     static {
         DATASOURCE_FACTORIES.put(Const.UN_POLLED_DATA_SOURCE, new UnPooledDataSourceFactory());
         DATASOURCE_FACTORIES.put(Const.POOLED_DATA_SOURCE, new PooledDataSourceFactory());
+        DATASOURCE_FACTORIES.put(Const.JNDI_DATA_SOURCE, new JNDIDataSourceFactory());
         TRANSACTION_FACTORIES.put(Const.JDBC_TRANSACTION, new JdbcTransactionFactory());
     }
 
@@ -41,7 +42,7 @@ public class SqlSessionFactoryBuilder {
             Element transactionElement = environment.element("transactionManager");
             Element dataSourceElement = environment.element("dataSource");
             List<Node> nodes = document.selectNodes("//mapper");
-            List<String> SqlMapperXMLPathList = new ArrayList<String>();
+            List<String> SqlMapperXMLPathList = new ArrayList<>();
             for (Node node : nodes) {
                 Element mapperElement = (Element) node;
                 String resource = mapperElement.attributeValue("resource");
