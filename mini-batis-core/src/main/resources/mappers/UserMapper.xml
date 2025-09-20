@@ -3,7 +3,11 @@
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.carbon.mapper.UserMapper">
-    <select id="insertUser" resultType="integer">
+    <insert id="insertUser" resultType="integer">
         insert into user values (#{id}, #{name}, #{age})
+    </insert>
+
+    <select id="selectOne" resultType="com.carbon.model.User">
+        select * from user where id = #{id}
     </select>
 </mapper>

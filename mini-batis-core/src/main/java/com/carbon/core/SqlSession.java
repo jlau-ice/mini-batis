@@ -3,7 +3,8 @@ package com.carbon.core;
 import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.sql.SQLException;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 
 /**
  * 执行Sql 的会话对象
@@ -32,11 +33,11 @@ public class SqlSession {
             int fromIndex = 0;
             int index = 1;
             while (true) {
-                int index1 = statementSql.indexOf("#",fromIndex);
+                int index1 = statementSql.indexOf("#", fromIndex);
                 if (index1 < 0) {
                     break;
                 }
-                int index2 = statementSql.indexOf("}",fromIndex);
+                int index2 = statementSql.indexOf("}", fromIndex);
                 String property = statementSql.substring(index1 + 2, index2).trim();
                 fromIndex = index2 + 1;
                 String methodName = "get" + property.toUpperCase().charAt(0) + property.substring(1);
@@ -53,6 +54,36 @@ public class SqlSession {
     }
 
     // selectOne
+    public Object selectOne(String sqlId, Object param) {
+        Object obj = null;
+        try {
+            Connection connection = factory.getTransaction().getConnection();
+            // select * from user where id = #{id}
+            String statementSql = factory.getMappedStatementMap().get(sqlId).getSql();
+            String sql = statementSql.replaceAll("#\\{[a-zA-Z0-9_$]*}", "?");
+            PreparedStatement preparedStatement = connection.prepareStatement(sql);
+            preparedStatement.setString(1, param.toString());
+            ResultSet result = preparedStatement.executeQuery();
+            String resultType = factory.getMappedStatementMap().get(sqlId).getResultType();
+            ResultSetMetaData metaData = result.getMetaData();
+            if (result.next()){
+                Class<?> resultTypeClass = Class.forName(resultType);
+                obj = resultTypeClass.newInstance();
+                int columnCount = metaData.getColumnCount();
+                for (int i = 1; i <= columnCount; i++) {
+                    String columnName = metaData.getColumnName(i);
+                    String methodName = "set" + columnName.toUpperCase().charAt(0) + columnName.substring(1);
+                    Method declaredMethod = resultTypeClass.getDeclaredMethod(methodName, String.class);
+                    declaredMethod.invoke(obj, result.getString(columnName));
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return obj;
+    }
+
+
     public void commit() {
         factory.getTransaction().commit();
     }
