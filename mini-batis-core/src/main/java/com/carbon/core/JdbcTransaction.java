@@ -28,7 +28,7 @@ public class JdbcTransaction implements Transaction {
     @Override
     public void commit() {
         try {
-            dataSource.getConnection().commit();
+            connection.commit();
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -37,7 +37,7 @@ public class JdbcTransaction implements Transaction {
     @Override
     public void rollback() {
         try {
-            dataSource.getConnection().commit();
+            connection.commit();
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -57,6 +57,7 @@ public class JdbcTransaction implements Transaction {
         if (connection == null) {
             try {
                 connection = dataSource.getConnection();
+                connection.setAutoCommit(autoCommit);
             } catch (SQLException e) {
                 e.printStackTrace();
             }
