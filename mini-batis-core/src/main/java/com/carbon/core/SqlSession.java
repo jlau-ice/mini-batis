@@ -1,71 +1,72 @@
 package com.carbon.core;
 
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 
+/**
+ * 执行Sql 的会话对象
+ */
 public class SqlSession {
 
     private SqlSessionFactory factory;
 
-    public SqlSession(SqlSessionFactory factory) {
-        this.factory = factory;
+    public SqlSession() {
     }
 
-    /**
-     * 提交事务
-     */
+    public SqlSession(SqlSessionFactory sqlSessionFactory) {
+        this.factory = sqlSessionFactory;
+    }
+
+    // insert
+    public int insert(String sqlId, Object pojo) {
+        Connection connection = factory.getTransaction().getConnection();
+        // insert in to user(id,name,age) values(#{a},#{b},#{c})
+        String statementSql = factory.getMappedStatementMap().get(sqlId).getSql();
+        String sql = statementSql.replaceAll("#\\{[a-zA-Z0-9_$]*}", "?");
+        int count = 0;
+        try {
+            PreparedStatement preparedStatement = connection.prepareStatement(sql);
+            // 给问号传值
+            int fromIndex = 0;
+            int index = 1;
+            while (true) {
+                int index1 = statementSql.indexOf("#",fromIndex);
+                if (index1 < 0) {
+                    break;
+                }
+                int index2 = statementSql.indexOf("}",fromIndex);
+                String property = statementSql.substring(index1 + 2, index2).trim();
+                fromIndex = index2 + 1;
+                String methodName = "get" + property.toUpperCase().charAt(0) + property.substring(1);
+                Method declaredMethod = pojo.getClass().getDeclaredMethod(methodName);
+                Object invoke = declaredMethod.invoke(pojo);
+                preparedStatement.setString(index, invoke.toString());
+                index++;
+            }
+            count = preparedStatement.executeUpdate();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return count;
+    }
+
+    // selectOne
     public void commit() {
         factory.getTransaction().commit();
     }
 
-    /**
-     * 回滚事务
-     */
     public void rollback() {
         factory.getTransaction().rollback();
     }
 
-
-    /**
-     * 关闭事务
-     */
     public void close() {
         factory.getTransaction().close();
     }
 
-    public int insert(String sqlId, Object pojo) {
-        int count = 0;
-        try {
-            Connection connection = factory.getTransaction().getConnection();
-            String insertSql = factory.getMappedStatementMap().get(sqlId).getSql();
-            System.out.println(factory.getMappedStatementMap().get(sqlId));
-            System.out.println(factory.getMappedStatementMap().get(sqlId).getSql());
-            String sql = insertSql.replaceAll("#\\{[a-zA-Z0-9_$]*}", "?");
-            PreparedStatement preparedStatement = connection.prepareStatement(sql);
-            int formIndex = 0;
-            int index = 1;
-            while (true) {
-                int jingIndex = insertSql.indexOf("#", formIndex);
-                if (jingIndex < 0) {
-                    break;
-                }
-                System.out.println(index);
-                int youKuoHaoIndex = insertSql.indexOf("}", formIndex);
-                String propertyName = insertSql.substring(jingIndex + 2, youKuoHaoIndex).trim();
-                System.out.println(propertyName);
-                formIndex = youKuoHaoIndex + 1;
-                String getMethodName = "get" + propertyName.toUpperCase().charAt(0) + propertyName.substring(1);
-                Method getMethod = pojo.getClass().getDeclaredMethod(getMethodName);
-                Object propertyValue = getMethod.invoke(pojo);
-                preparedStatement.setString(index, propertyValue.toString());
-                index++;
-            }
-            count = preparedStatement.executeUpdate();
-        } catch (SQLException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
-            throw new RuntimeException(e);
-        }
-        return count;
+    public static void main(String[] args) {
+
     }
 }
 

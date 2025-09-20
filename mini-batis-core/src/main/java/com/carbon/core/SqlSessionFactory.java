@@ -27,6 +27,12 @@ public class SqlSessionFactory {
      */
     private Map<String, MappedStatement> mappedStatementMap;
 
+    public SqlSession openSession() {
+        transaction.openConnection();
+        return new SqlSession(this);
+    }
+
+
 
     public Transaction getTransaction() {
         return transaction;
